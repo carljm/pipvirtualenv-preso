@@ -1,0 +1,9 @@
+{
+  "name": "Reverse-engineering Ian Bicking's brain: inside pip and virtualenv",
+  "sections": [
+              {"section":"title"},
+              {"section":"virtualenv"},
+              {"section":"pip"},
+              {"section":"outro"}
+              ]
+}
