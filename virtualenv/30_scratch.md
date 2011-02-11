@@ -64,6 +64,25 @@
      '/home/carljm/scratch/lib/python2.6/lib-old',
      '/usr/lib/python2.6/lib-dynload']
 
+!SLIDE incremental commandline
+
+# `sys.exec_prefix` #
+
+    $ touch lib/python2.6/lib-dynload
+
+    $ ./bin/python -c "import sys; print sys.exec_prefix"
+    'import site' failed; use -v for traceback
+    /home/carljm/scratch
+
+    $ ./bin/python -c "import sys; print sys.path"
+    'import site' failed; use -v for traceback
+    ['',
+     '/home/carljm/scratch/lib/python2.6/',
+     '/home/carljm/scratch/lib/python2.6/plat-linux2',
+     '/home/carljm/scratch/lib/python2.6/lib-tk',
+     '/home/carljm/scratch/lib/python2.6/lib-old',
+     '/home/carljm/scratch/lib/python2.6/lib-dynload']
+
 !SLIDE incremental bullets
 
 # We have a virtualenv. #
@@ -83,7 +102,7 @@
 
 !SLIDE incremental bullets
 
-# How `virtualenv` does it. #
+# Bootstrap like a `virtualenv`. #
 
 * Write `orig-prefix.txt` to `lib/python2.6`.
 * Contains the system Python's `sys.prefix`.
@@ -99,6 +118,7 @@
     |   `-- python
     `-- lib
         `-- python2.6
+            |-- lib-dynload
             |-- orig-prefix.txt
             |-- os.py
             `-- site.py
@@ -128,12 +148,12 @@
 
 !SLIDE incremental bullets
 
-## But `site.py` uses the standard library! ##
+## But `site.py` depends on the standard library! ##
 
 * We have a bootstrapping problem.
 * Solution: symlink (or copy) just the stdlib bits that we need
   to bootstrap `site.py`.
-* After `site.py` runs, we'll have access to the full stdlib due to its
+* After `site.py` runs, we'll have access to the full stdlib thanks to its
   `sys.path` additions.
 
 !SLIDE smaller
@@ -167,14 +187,15 @@
 
 ## We can also add the global `site-packages`, if we want. ##
 
-!SLIDE small
+!SLIDE smaller
 
 # `site.py` #
 
     @@@ python
     def virtual_addsitepackages(known_paths):
         # ...
-        return addsitepackages(known_paths, sys_prefix=sys.real_prefix)
+        return addsitepackages(known_paths,
+                               sys_prefix=sys.real_prefix)
 
     # ...
 

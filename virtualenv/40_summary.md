@@ -20,7 +20,7 @@
 
 ## Sometimes you can't use the virtualenv's binary. ##
 
-### e.g. `mod_wsgi` ###
+### `mod_wsgi` ###
 
 !SLIDE small
 
@@ -34,7 +34,7 @@
 # `sys.path.insert(0, ...)` #
 
 * Doesn't process `.pth` files.
-* Fine if your virtualenv only includes flat (i.e. pip) installs.
+* Fine if your virtualenv only includes flat installs.
 * Won't work with eggs or develop/editable installs.
 
 !SLIDE small

@@ -28,13 +28,11 @@
     SET_SYS_FROM_STRING("exec_prefix",
                         PyString_FromString(Py_GetExecPrefix()));
 
-!SLIDE bullets incremental
+!SLIDE
 
-# Down the rabbit hole!
+# Down the rabbit hole! #
 
-* `Py_GetPrefix` is defined in `Modules/getpath.c`
-
-!SLIDE smaller
+!SLIDE smallest
 
 # `Modules/getpath.c` #
 
@@ -48,10 +46,6 @@
      * but for some installations, they are different.
      *
      ...
-
-!SLIDE
-
-# Summary #
 
 !SLIDE incremental bullets
 

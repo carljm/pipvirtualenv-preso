@@ -49,7 +49,7 @@
 
     ...
 
-!SLIDE smaller
+!SLIDE smallest
 
 # `site.py` #
 
