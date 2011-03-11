@@ -1,6 +1,6 @@
 !SLIDE
 
-# Let's try this. #
+# Let's do this. #
 
     $ mkdir scratch; cd scratch
 

@@ -85,4 +85,4 @@
 * Larry Hastings.
 * C wrapper that calls system Python binary.
 * Most promising direction for integration into Python.
-* Just needs a PEP and a patch?
+* Needs a PEP and a patch?
