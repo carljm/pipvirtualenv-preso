@@ -45,8 +45,8 @@
 * Ugliest.
 * Hack.
 * Evar.
-* (Sorry, Ian).
-* (Like a disturbing number of Ian's ugly hacks, it works quite well).
+* (Sorry, Ian.)
+* (Like a disturbing number of Ian's ugly hacks, it works quite well.)
 
 !SLIDE smaller
 
