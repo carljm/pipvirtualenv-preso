@@ -16,55 +16,22 @@
 
 # Problems #
 
-!SLIDE
+!SLIDE small
 
 ## Sometimes you can't use the virtualenv's binary. ##
 
-### `mod_wsgi` ###
-
-!SLIDE small
+## Faking it: ##
 
     @@@ python
     import sys
     sys.path.insert(0,
         "/path/to/venv/lib/python2.6/site-packages")
 
-!SLIDE incremental bullets
-
-# `sys.path.insert(0, ...)` #
-
-* Doesn't process `.pth` files.
-* Fine if your virtualenv only includes flat installs.
-* Won't work with eggs or develop/editable installs.
-
-!SLIDE small
-
-    @@@ python
     import site
     site.addsitedir(
         "/path/to/venv/lib/python2.6/site-packages")
 
-!SLIDE incremental bullets
-
-# `site.addsitedir` #
-
-* Processes `.pth` files.
-* Appends to end of `sys.path`, global site-packages will take precedence.
-
-!SLIDE small
-
-    @@@ python
     execfile("/path/to/venv/bin/activate_this.py")
-
-!SLIDE incremental smbullets
-
-# `activate_this.py` #
-
-* Uses `site.addsitedir`.
-* Rearranges sys.path to put venv site-packages first.
-* No support for `--no-site-packages`.
-* Changes `sys.prefix`.
-* This makes Graham sad.
 
 !SLIDE incremental smbullets
 
@@ -80,14 +47,18 @@
 
 !SLIDE incremental smbullets
 
+## virtualenv-small-sitepy ##
+
 ### `https://bitbucket.org/brandon/virtualenv-small-sitepy` ###
 
 * Brandon Craig Rhodes' experiment.
-* Refactor virtualenv's `site.py` to be a light wrapper around the system `site.py`.
+* Make virtualenv's `site.py` a light wrapper around the system `site.py`.
 * Extend, rather than copy-paste-modify.
-* Close, but not 100%; not actively developed.
+* Very close, but not 100%; currently dormant.
 
 !SLIDE incremental smbullets
+
+## rvirtualenv ##
 
 ### `https://github.com/kvbik/rvirtualenv` ###
 
@@ -95,12 +66,23 @@
 * Completely different approach.
 * Uses PYTHONPATH.
 * No copied Python binary.
+* Relocatable, inheritable.
 * Doesn't support --no-site-packages.
 
 !SLIDE incremental smbullets
 
-## Just use `PYTHONHOME` env var ##
+## Just use `PYTHONHOME`! ##
 
-* Sets `sys.prefix` without need for relocated binary.
+* Sets `sys.prefix` with no copied binary.
 * Still requires copied stdlib or `site.py` hacks.
-* Quite similar to virtualenv, largely a matter of preference.
+* Harder to pin a "virtualenv" to a Python version.
+* Ian: "I don't like environment variables."
+
+!SLIDE incremental smbullets
+
+## pythonv ##
+
+* Larry Hastings.
+* C wrapper that calls system Python binary.
+* Most promising direction for integration into Python.
+* Just needs a PEP and a patch?

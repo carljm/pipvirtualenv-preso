@@ -8,13 +8,16 @@
 
 # How? #
 
-!SLIDE
+!SLIDE incremental bullets
 
-## Pip <3 setuptools! ##
+## Pip's dirty little secret ##
+
+* Pip doesn't install packages at all...
+* Pip <3 setuptools!
 
 !SLIDE small
 
-# `pip/reqs.py` #
+# `pip/req.py` #
 
     @@@ python
     def install(self, install_options, global_options=()):
@@ -43,21 +46,21 @@
 * Hack.
 * Evar.
 * (Sorry, Ian).
-* (But it works really well).
+* (Like a disturbing number of Ian's ugly hacks, it works quite well).
 
-!SLIDE smallest
+!SLIDE smaller
 
 # Install like pip: #
 
     python -c
-        "import setuptools;__file__=/path/to/setup.py;execfile(__file__)"
-        install
-        --single-version-externally-managed
-        --record /tmp/pip-ZgGVWG-record/install-record.txt
+      "import setuptools;__file__=/p/to/setup.py;execfile(__file__)"
+      install
+      --single-version-externally-managed
+      --record /tmp/pip-ZgGVWG-record/install-record.txt
 
-!SLIDE bullets smaller incremental
+!SLIDE smbullets incremental
 
-### `"import setuptools;__file__=/path/to/setup.py;execfile(__file__)"` ###
+### `"import setuptools;__file__=/p/to/setup.py;execfile(__file__)"` ###
 
 * Setuptools works by monkeypatching the builtin distutils.
 * Thus, importing setuptools is enough to activate its features.
@@ -75,7 +78,10 @@
 
 ## `--single-version-externally-managed` ##
 
-* Tells setuptools to do a "flat" install, not a zipped egg or egg-directory.
+* Tells setuptools to do a "flat" (distutils-style) install and put the
+  metadata next to it in a `.egg-info` directory, rather than a zipped egg or
+  egg-directory.
+
 * A setuptools feature.
 
 !SLIDE commandline
@@ -110,7 +116,7 @@
 ### `--record /tmp/pip-ZgGVWG-record/install-record.txt` ###
 
 * Generates a record of all files installed.
-* Neither distutils nor setuptools does this by default. WHY!?
-* (Fortunately distutils2 and PEP 376 do.)
+* distutils and setuptools: Y U NO DO THIS BY DEFAULT?!?!??!
+* (Fortunately PEP 376 mandates it, and distutils2 does it.)
 * Pip generates it in a temporary location, then moves it to
-  `installed-files.txt` in the `.egg-info` directory.
+  `installed-files.txt` in the `.egg-info` metadata directory.

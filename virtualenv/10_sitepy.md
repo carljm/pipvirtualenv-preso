@@ -9,7 +9,7 @@
 # What should it do? #
 
 * Fully isolated environments.
-* Use our local `site-packages` directory
+* Use its own `site-packages` directory
 * ...for everything (imports and installation).
 * Ignore the system `site-packages`.
 
@@ -55,7 +55,6 @@
 
     @@@ python
     # Prefixes for site-packages;
-    # add additional prefixes like /usr/local here
     PREFIXES = [sys.prefix, sys.exec_prefix]
 
     def getsitepackages():
@@ -95,7 +94,3 @@
                             os.path.join("/Library", framework,
                                 sys.version[:3], "site-packages"))
         return sitepackages
-
-!SLIDE
-
-## But where does `sys.prefix` come from? ##

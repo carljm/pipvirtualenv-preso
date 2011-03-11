@@ -17,13 +17,14 @@
     `-- bin
         `-- python
 
-    $ ./bin/python -c "import sys; print sys.prefix"
+    $ ./bin/python -c "import sys; print(sys.prefix)"
     /usr
 
 !SLIDE incremental smbullets
 
 # `sys.prefix` is still `/usr`. #
 
+* No `PYTHONHOME` set.
 * Binary is in `/home/carljm/scratch/bin/`.
 * No `/home/carljm/scratch/bin/lib/python2.6/os.py`
 * No `/home/carljm/scratch/lib/python2.6/os.py`
@@ -51,11 +52,11 @@
 
 # Success! #
 
-    $ ./bin/python -c "import sys; print sys.prefix"
+    $ ./bin/python -c "import sys; print(sys.prefix)"
     'import site' failed; use -v for traceback
     /home/carljm/scratch
 
-    $ ./bin/python -c "import sys; print sys.path"
+    $ ./bin/python -c "import sys; print(sys.path)"
     'import site' failed; use -v for traceback
     ['',
      '/home/carljm/scratch/lib/python2.6/',
@@ -64,17 +65,17 @@
      '/home/carljm/scratch/lib/python2.6/lib-old',
      '/usr/lib/python2.6/lib-dynload']
 
-!SLIDE incremental commandline
+!SLIDE commandline
 
-# `sys.exec_prefix` #
+# Fixing `sys.exec_prefix` #
 
-    $ touch lib/python2.6/lib-dynload
+    $ mkdir lib/python2.6/lib-dynload
 
-    $ ./bin/python -c "import sys; print sys.exec_prefix"
+    $ ./bin/python -c "import sys; print(sys.exec_prefix)"
     'import site' failed; use -v for traceback
     /home/carljm/scratch
 
-    $ ./bin/python -c "import sys; print sys.path"
+    $ ./bin/python -c "import sys; print(sys.path)"
     'import site' failed; use -v for traceback
     ['',
      '/home/carljm/scratch/lib/python2.6/',
@@ -85,11 +86,11 @@
 
 !SLIDE incremental bullets
 
-# We have a virtualenv. #
+# We have an isolated virtualenv! #
 
 * It's broken.
 * No standard library.
-* No `site.py`, thus no `site-packages`.
+* No `site.py`, thus no `site-packages` at all.
 
 !SLIDE incremental bullets
 
@@ -145,7 +146,6 @@
         # ...
         sys.path.extend(paths)
 
-
 !SLIDE incremental bullets
 
 ## But `site.py` depends on the standard library! ##
@@ -185,7 +185,7 @@
 
 !SLIDE
 
-## We can also add the global `site-packages`, if we want. ##
+## We can also add the global `site-packages`, if we want it. ##
 
 !SLIDE smaller
 
