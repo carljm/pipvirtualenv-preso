@@ -41,3 +41,4 @@
 * https://github.com/pypa/virtualenv
 * @carljm
 * carl@oddbird.net
+* slides: https://github.com/carljm/pipvirtualenv-preso
