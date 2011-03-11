@@ -3,7 +3,34 @@
 ## Where does `sys.prefix` come from? ##
 
 * `Python/sysmodule.c`
+* Down the rabbit hole...
 * `Modules/getpath.c`
+
+!SLIDE smaller
+
+## `Modules/getpath.c` ##
+
+    @@@ c
+    #ifndef LANDMARK
+    #define LANDMARK "os.py"
+    #endif
+
+    static int
+    search_for_prefix(char *argv0_path, char *home)
+    {
+    /* ... */
+
+        /* Search from argv0_path, until root is found */
+        copy_absolute(prefix, argv0_path);
+        do {
+            n = strlen(prefix);
+            joinpath(prefix, lib_python);
+            joinpath(prefix, LANDMARK);
+            if (ismodule(prefix))
+                return 1;
+            prefix[n] = '\0';
+            reduce(prefix);
+        } while (prefix[0]);
 
 !SLIDE incremental bullets
 

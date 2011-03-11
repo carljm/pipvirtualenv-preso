@@ -1,6 +1,6 @@
 !SLIDE
 
-# Let's try it. #
+# Let's try this. #
 
     $ mkdir scratch; cd scratch
 
@@ -50,8 +50,6 @@
 
 !SLIDE incremental commandline
 
-# Success! #
-
     $ ./bin/python -c "import sys; print(sys.prefix)"
     'import site' failed; use -v for traceback
     /home/carljm/scratch
@@ -65,7 +63,7 @@
      '/home/carljm/scratch/lib/python2.6/lib-old',
      '/usr/lib/python2.6/lib-dynload']
 
-!SLIDE commandline
+!SLIDE incremental commandline
 
 # Fixing `sys.exec_prefix` #
 
