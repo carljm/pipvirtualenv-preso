@@ -1,0 +1,16 @@
+body {
+    font-family: "Museo Sans", Helvetica, sans-serif;
+}
+
+.smallest {
+    font-size: 55%
+}
+
+.intro h3 {
+    text-align: left;
+    padding-left: 100px;
+}
+
+.intro img {
+    margin-top: 50px;
+}

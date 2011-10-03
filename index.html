@@ -1,0 +1,729 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  <title>Reverse-engineering Ian Bicking's brain: inside pip and virtualenv</title>
+
+  <meta name="viewport" content="width=device-width"/>
+
+  <link rel="stylesheet" href="./css/reset.css" type="text/css"/>
+  <link rel="stylesheet" href="./css/showoff.css" type="text/css"/>
+
+  <script type="text/javascript" src="./js/jquery-1.4.2.min.js"></script>
+  <script type="text/javascript" src="./js/jquery.cycle.all.js"></script>
+	<script type="text/javascript" src="./js/jquery-print.js"></script>
+  <script type="text/javascript" src="./js/jquery.batchImageLoad.js"></script>
+
+  <script type="text/javascript" src="./js/jquery.doubletap-0.1.js"></script>
+
+  <script type="text/javascript" src="./js/fg.menu.js"></script>
+  <script type="text/javascript" src="./js/showoff.js"></script>
+  <script type="text/javascript" src="./js/jTypeWriter.js"> </script>
+  <script type="text/javascript" src="./js/sh_main.min.js"></script>
+  <script type="text/javascript" src="./js/core.js"></script>
+  <script type="text/javascript" src="./js/showoffcore.js"></script>
+  <script type="text/javascript" src="./js/coffee-script.js"></script>
+
+  <link type="text/css" href="./css/fg.menu.css" media="screen" rel="stylesheet" />
+  <link type="text/css" href="./css/theme/ui.all.css" media="screen" rel="stylesheet" />
+  <link type="text/css" href="./css/sh_style.css" rel="stylesheet" >
+
+  
+    <link rel="stylesheet" href="file/style.css" type="text/css"/>
+  
+
+  
+    <script type="text/javascript" src="file/timer.js"></script>
+  
+
+  <script type="text/javascript">
+  $(function(){
+      setupPreso(false, './');
+  });
+  </script>
+
+</head>
+
+<body>
+
+<a tabindex="0" href="#search-engines" class="fg-button fg-button-icon-right ui-widget ui-state-default ui-corner-all" id="navmenu"><span class="ui-icon ui-icon-triangle-1-s"></span>slides</a>
+<div id="navigation" class="hidden"></div>
+
+<div id="help">
+  <table>
+    <tr><td class="key">z, ?</td><td>toggle help (this)</td></tr>
+    <tr><td class="key">space, &rarr;</td><td>next slide</td></tr>
+    <tr><td class="key">shift-space, &larr;</td><td>previous slide</td></tr>
+    <tr><td class="key">d</td><td>toggle debug mode</td></tr>
+    <tr><td class="key">## &lt;ret&gt;</td><td>go to slide #</td></tr>
+    <tr><td class="key">c, t</td><td>table of contents (vi)</td></tr>
+    <tr><td class="key">f</td><td>toggle footer</td></tr>
+    <tr><td class="key">r</td><td>reload slides</td></tr>
+    <tr><td class="key">n</td><td>toggle notes</td></tr>
+    <tr><td class="key">p</td><td>run preshow</td></tr>
+  </table>
+</div>
+
+<div class="buttonNav">
+  <input type="submit" onClick="prevStep();" value="prev"/>
+  <input type="submit" onClick="nextStep();" value="next"/>
+</div>
+
+<div id="preso">loading presentation...</div>
+<div id="footer">
+  <span id="slideInfo"></span>
+  <span id="debugInfo"></span>
+  <span id="notesInfo"></span>
+</div>
+
+<div id="slides" class="offscreen" style="display:none;">
+<div class="slide" data-transition="none"><div class="content smaller intro" ref="title/01_title">
+<h1>Reverse-engineering</h1>
+
+<h1>Ian Bicking's brain</h1>
+
+<h2>inside pip and virtualenv</h2>
+
+<p><img src="./file/title/logo-half.png" alt="OddBird"/></p>
+
+<h3>Carl J Meyer</h3>
+
+<h3>@carljm</h3>
+
+<h3>carl@oddbird.net</h3></div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="virtualenv/10_sitepy/1">
+<h1>virtualenv</h1>
+
+<ul>
+<li>From scratch!</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="virtualenv/10_sitepy/2">
+<h1>What should it do?</h1>
+
+<ul>
+<li>Fully isolated environments.</li>
+<li>Use its own <code>site-packages</code> directory</li>
+<li>...for everything (imports and installation).</li>
+<li>Ignore the system <code>site-packages</code>.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="virtualenv/10_sitepy/3">
+<h1><code>site-packages</code></h1>
+
+<ul>
+<li>Where third-party installed modules go.</li>
+<li>e.g. <code>/usr/lib/python2.6/site-packages/</code></li>
+<li>(Standard library in <code>/usr/lib/python2.6</code>)</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="virtualenv/10_sitepy/4">
+<h1><code>site-packages</code></h1>
+
+<ul>
+<li>How does it work?</li>
+<li>Python imports <code>site.py</code> at startup.</li>
+<li>e.g. <code>usr/lib/python2.6/site.py</code></li>
+<li>Or <code>Lib/site.py</code> in the Python source.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content smallest" ref="virtualenv/10_sitepy/5">
+<h1><code>site.py</code></h1>
+
+<pre class="sh_python"><code># Prefixes for site-packages;
+PREFIXES = [sys.prefix, sys.exec_prefix]
+
+def getsitepackages():
+    """Returns a list containing all global site-packages
+    directories (and possibly site-python).
+
+    For each directory present in the global ``PREFIXES``,
+    this function will find its `site-packages` subdirectory
+    depending on the system environment, and will return a
+    list of full paths.
+    """
+    sitepackages = []
+    seen = set()
+
+    for prefix in PREFIXES:
+        if not prefix or prefix in seen:
+            continue
+        seen.add(prefix)
+
+        if sys.platform in ('os2emx', 'riscos'):
+            sitepackages.append(os.path.join(prefix, "Lib", "site-packages"))
+        elif os.sep == '/':
+            sitepackages.append(os.path.join(prefix, "lib",
+                                        "python" + sys.version[:3],
+                                        "site-packages"))
+            sitepackages.append(os.path.join(prefix, "lib", "site-python"))
+        else:
+            sitepackages.append(prefix)
+            sitepackages.append(os.path.join(prefix, "lib", "site-packages"))
+        if sys.platform == "darwin":
+            # for framework builds *only* we add the standard Apple
+            # locations.
+            from sysconfig import get_config_var
+            framework = get_config_var("PYTHONFRAMEWORK")
+            if framework and "/%s.framework/"%(framework,) in prefix:
+                sitepackages.append(
+                        os.path.join("/Library", framework,
+                            sys.version[:3], "site-packages"))
+    return sitepackages</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="virtualenv/20_prefix/1">
+<h2>Where does <code>sys.prefix</code> come from?</h2>
+
+<ul>
+<li><code>Python/sysmodule.c</code></li>
+<li>Down the rabbit hole...</li>
+<li><code>Modules/getpath.c</code></li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content smaller" ref="virtualenv/20_prefix/2">
+<h2><code>Modules/getpath.c</code></h2>
+
+<pre class="sh_c"><code>#ifndef LANDMARK
+#define LANDMARK "os.py"
+#endif
+
+static int
+search_for_prefix(char *argv0_path, char *home)
+{
+/* ... */
+
+    /* Search from argv0_path, until root is found */
+    copy_absolute(prefix, argv0_path);
+    do {
+        n = strlen(prefix);
+        joinpath(prefix, lib_python);
+        joinpath(prefix, LANDMARK);
+        if (ismodule(prefix))
+            return 1;
+        prefix[n] = '\0';
+        reduce(prefix);
+    } while (prefix[0]);</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="virtualenv/20_prefix/3">
+<h1>The hunt for <code>sys.prefix</code></h1>
+
+<ul>
+<li>If <code>PYTHONHOME</code> is set, that's <code>sys.prefix</code>.</li>
+<li>Otherwise...</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="virtualenv/20_prefix/4">
+<ul>
+<li>Starting from the location of the Python binary, search upwards.</li>
+<li>At each step, look for <code>lib/pythonX.X/os.py</code>.</li>
+<li>If it exists, we've found <code>sys.prefix</code>.</li>
+<li>If we never find it, fallback on hardcoded <code>configure --prefix</code> from build.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content" ref="virtualenv/20_prefix/5">
+<h2>Yes, <code>os.py</code> is the hardcoded landmark.</h2>
+
+<h2><code>Modules/getpath.c</code></h2>
+
+<pre class="sh_c"><code>#ifndef LANDMARK
+#define LANDMARK "os.py"
+#endif</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content" ref="virtualenv/30_scratch/1">
+<h1>Let's do this.</h1>
+
+<pre><code>$ mkdir scratch; cd scratch
+</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content commandline incremental" ref="virtualenv/30_scratch/2">
+<h1>Copy the Python binary.</h1>
+
+<pre><code><code class="command">$ mkdir bin</code>
+<code class="result">
+</code><code class="command">$ cp /usr/bin/python bin/</code>
+<code class="result">
+</code><code class="command">$ tree</code>
+<code class="result">.
+`-- bin
+    `-- python
+
+</code><code class="command">$ ./bin/python -c "import sys; print(sys.prefix)"</code>
+<code class="result">/usr
+</code></code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content incremental smbullets" ref="virtualenv/30_scratch/3">
+<h1><code>sys.prefix</code> is still <code>/usr</code>.</h1>
+
+<ul>
+<li>No <code>PYTHONHOME</code> set.</li>
+<li>Binary is in <code>/home/carljm/scratch/bin/</code>.</li>
+<li>No <code>/home/carljm/scratch/bin/lib/python2.6/os.py</code></li>
+<li>No <code>/home/carljm/scratch/lib/python2.6/os.py</code></li>
+<li>No <code>/home/carljm/lib/python2.6/os.py</code></li>
+<li>No <code>/home/lib/python2.6/os.py</code></li>
+<li><code>/usr</code> is the fallback build prefix.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content commandline incremental" ref="virtualenv/30_scratch/4">
+<h1>Create the landmark.</h1>
+
+<pre><code><code class="command">$ mkdir -p lib/python2.6</code>
+<code class="result">
+</code><code class="command">$ touch lib/python2.6/os.py</code>
+<code class="result">
+</code><code class="command">$ tree</code>
+<code class="result">.
+|-- bin
+|   `-- python
+`-- lib
+    `-- python2.6
+        `-- os.py
+</code></code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content incremental commandline" ref="virtualenv/30_scratch/5">
+<pre><code><code class="command">$ ./bin/python -c "import sys; print(sys.prefix)"</code>
+<code class="result">'import site' failed; use -v for traceback
+/home/carljm/scratch
+
+</code><code class="command">$ ./bin/python -c "import sys; print(sys.path)"</code>
+<code class="result">'import site' failed; use -v for traceback
+['',
+ '/home/carljm/scratch/lib/python2.6/',
+ '/home/carljm/scratch/lib/python2.6/plat-linux2',
+ '/home/carljm/scratch/lib/python2.6/lib-tk',
+ '/home/carljm/scratch/lib/python2.6/lib-old',
+ '/usr/lib/python2.6/lib-dynload']
+</code></code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content incremental commandline" ref="virtualenv/30_scratch/6">
+<h1>Fixing <code>sys.exec_prefix</code></h1>
+
+<pre><code><code class="command">$ mkdir lib/python2.6/lib-dynload</code>
+<code class="result">
+</code><code class="command">$ ./bin/python -c "import sys; print(sys.exec_prefix)"</code>
+<code class="result">'import site' failed; use -v for traceback
+/home/carljm/scratch
+
+</code><code class="command">$ ./bin/python -c "import sys; print(sys.path)"</code>
+<code class="result">'import site' failed; use -v for traceback
+['',
+ '/home/carljm/scratch/lib/python2.6/',
+ '/home/carljm/scratch/lib/python2.6/plat-linux2',
+ '/home/carljm/scratch/lib/python2.6/lib-tk',
+ '/home/carljm/scratch/lib/python2.6/lib-old',
+ '/home/carljm/scratch/lib/python2.6/lib-dynload']
+</code></code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="virtualenv/30_scratch/7">
+<h1>We have an isolated virtualenv!</h1>
+
+<ul>
+<li>It's broken.</li>
+<li>No standard library.</li>
+<li>No <code>site.py</code>, thus no <code>site-packages</code> at all.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="virtualenv/30_scratch/8">
+<h1>How could we fix it?</h1>
+
+<ul>
+<li>Copy the entire stdlib (including <code>site.py</code>) into our <code>lib/python2.6</code>.</li>
+<li>Works, but heavy.</li>
+<li>We're not going to modify the standard library; could we just use the system
+one?</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="virtualenv/30_scratch/9">
+<h1>Bootstrap like a <code>virtualenv</code>.</h1>
+
+<ul>
+<li>Write <code>orig-prefix.txt</code> to <code>lib/python2.6</code>.</li>
+<li>Contains the system Python's <code>sys.prefix</code>.</li>
+<li>Place our own, modified <code>site.py</code> in <code>lib/python2.6</code>.</li>
+<li>Our <code>site.py</code> reads <code>orig-prefix.txt</code> and adds system stdlib paths to
+<code>sys.path</code>.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content commandline" ref="virtualenv/30_scratch/10">
+<pre><code><code class="command">$ tree</code>
+<code class="result">.
+|-- bin
+|   `-- python
+`-- lib
+    `-- python2.6
+        |-- lib-dynload
+        |-- orig-prefix.txt
+        |-- os.py
+        `-- site.py
+</code></code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content small" ref="virtualenv/30_scratch/11">
+<h1>From virtualenv's modified <code>site.py</code></h1>
+
+<pre class="sh_python"><code>def virtual_install_main_packages():
+    f = open(os.path.join(os.path.dirname(__file__),
+                          'orig-prefix.txt'))
+    sys.real_prefix = f.read().strip()
+    # ...
+    if sys.platform == 'win32':
+        paths = [os.path.join(sys.real_prefix, 'Lib'),
+                 os.path.join(sys.real_prefix, 'DLLs')]
+    # ...
+    else:
+        paths = [os.path.join(sys.real_prefix,
+                              'lib',
+                              'python'+sys.version[:3])]
+    # ...
+    sys.path.extend(paths)</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="virtualenv/30_scratch/12">
+<h2>But <code>site.py</code> depends on the standard library!</h2>
+
+<ul>
+<li>We have a bootstrapping problem.</li>
+<li>Solution: symlink (or copy) just the stdlib bits that we need
+to bootstrap <code>site.py</code>.</li>
+<li>After <code>site.py</code> runs, we'll have access to the full stdlib thanks to its
+<code>sys.path</code> additions.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content smaller" ref="virtualenv/30_scratch/13">
+<h1>From <code>virtualenv.py</code></h1>
+
+<pre class="sh_python"><code>REQUIRED_MODULES = [
+    'os', 'posix', 'posixpath', 'nt', 'ntpath', 'genericpath',
+    'fnmatch', 'locale', 'encodings', 'codecs',
+    'stat', 'UserDict', 'readline', 'copy_reg', 'types',
+    're', 'sre', 'sre_parse', 'sre_constants', 'sre_compile',
+    'zlib']
+
+def copy_required_modules(dst_prefix):
+    import imp
+    for modname in REQUIRED_MODULES:
+        # ...
+        try:
+            f, filename, _ = imp.find_module(modname)
+        except ImportError:
+            logger.info("Cannot import bootstrap module: %s" % modname)
+        else:
+            if f is not None:
+                f.close()
+            dst_filename = change_prefix(filename, dst_prefix)
+            copyfile(filename, dst_filename)
+            # ...</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content" ref="virtualenv/30_scratch/14">
+<h2>We can also add the global <code>site-packages</code>, if we want it.</h2></div>
+</div><div class="slide" data-transition="none"><div class="content smaller" ref="virtualenv/30_scratch/15">
+<h1><code>site.py</code></h1>
+
+<pre class="sh_python"><code>def virtual_addsitepackages(known_paths):
+    # ...
+    return addsitepackages(known_paths,
+                           sys_prefix=sys.real_prefix)
+
+# ...
+
+def main():
+    # ...
+    if GLOBAL_SITE_PACKAGES:
+        paths_in_sys = virtual_addsitepackages(paths_in_sys)
+    # ...</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content" ref="virtualenv/40_summary/1">
+<h2>What makes a virtualenv work is the location of its binary, and its hacked <code>site.py</code>.</h2>
+
+<h3>Corollary: if you aren't using the virtualenv's binary, you aren't really using the virtualenv.</h3></div>
+</div><div class="slide" data-transition="none"><div class="content bullets incremental" ref="virtualenv/40_summary/2">
+<h1>What about <code>bin/activate</code>?</h1>
+
+<ul>
+<li>A shell convenience only.</li>
+<li>Adds the virtualenv's <code>bin/</code> to the front of your shell <code>PATH</code>.</li>
+<li>Bad mental model.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content" ref="virtualenv/40_summary/3">
+<h1>Problems</h1></div>
+</div><div class="slide" data-transition="none"><div class="content small" ref="virtualenv/40_summary/4">
+<h2>Sometimes you can't use the virtualenv's binary.</h2>
+
+<h2>Faking it:</h2>
+
+<pre class="sh_python"><code>import sys
+sys.path.insert(0,
+    "/path/to/venv/lib/python2.6/site-packages")
+
+import site
+site.addsitedir(
+    "/path/to/venv/lib/python2.6/site-packages")
+
+execfile("/path/to/venv/bin/activate_this.py")</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content incremental smbullets" ref="virtualenv/40_summary/5">
+<h1>Forked <code>site.py</code>.</h1>
+
+<ul>
+<li>Distributors modify <code>site.py</code> (e.g. Debian <code>dist-packages</code>).</li>
+<li>New Python versions modify <code>site.py</code>.</li>
+<li>Virtualenv has to play catchup.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content" ref="virtualenv/40_summary/6">
+<h1>Other approaches</h1></div>
+</div><div class="slide" data-transition="none"><div class="content incremental smbullets" ref="virtualenv/40_summary/7">
+<h2>virtualenv-small-sitepy</h2>
+
+<h3><code>https://bitbucket.org/brandon/virtualenv-small-sitepy</code></h3>
+
+<ul>
+<li>Brandon Craig Rhodes' experiment.</li>
+<li>Make virtualenv's <code>site.py</code> a light wrapper around the system <code>site.py</code>.</li>
+<li>Extend, rather than copy-paste-modify.</li>
+<li>Very close, but not 100%; currently dormant.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content incremental smbullets" ref="virtualenv/40_summary/8">
+<h2>rvirtualenv</h2>
+
+<h3><code>https://github.com/kvbik/rvirtualenv</code></h3>
+
+<ul>
+<li>Jakub Vysoky.</li>
+<li>Completely different approach.</li>
+<li>Uses PYTHONPATH.</li>
+<li>No copied Python binary.</li>
+<li>Relocatable, inheritable.</li>
+<li>Doesn't support --no-site-packages.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content incremental smbullets" ref="virtualenv/40_summary/9">
+<h2>Just use <code>PYTHONHOME</code>!</h2>
+
+<ul>
+<li>Sets <code>sys.prefix</code> with no copied binary.</li>
+<li>Still requires copied stdlib or <code>site.py</code> hacks.</li>
+<li>Harder to pin a "virtualenv" to a Python version.</li>
+<li>Ian: "I don't like environment variables."</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content incremental smbullets" ref="virtualenv/40_summary/10">
+<h2>pythonv</h2>
+
+<ul>
+<li>Larry Hastings.</li>
+<li>C wrapper that calls system Python binary.</li>
+<li>Most promising direction for integration into Python.</li>
+<li>Needs a PEP and a patch?</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content smbullets" ref="pip/10_install/1">
+<h1>Pip!</h1>
+
+<ul>
+<li>Pip installs (Python) Packages</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content" ref="pip/10_install/2">
+<h1>How?</h1></div>
+</div><div class="slide" data-transition="none"><div class="content incremental bullets" ref="pip/10_install/3">
+<h2>Pip's dirty little secret</h2>
+
+<ul>
+<li>Pip doesn't install packages at all...</li>
+<li>Pip &lt;3 setuptools!</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content small" ref="pip/10_install/4">
+<h1><code>pip/req.py</code></h1>
+
+<pre class="sh_python"><code>def install(self, install_options, global_options=()):
+    # ...
+    install_args = [
+        sys.executable, '-c',
+        "import setuptools;__file__=%r;"\
+        "execfile(__file__)" % self.setup_py] +\
+        list(global_options) + [
+        'install',
+        '--single-version-externally-managed',
+        '--record', record_filename]
+
+    # ...
+
+    call_subprocess(install_args + install_options,
+        cwd=self.source_dir,
+        filter_stdout=self._filter_install,
+        show_stdout=False)</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content bullets incremental" ref="pip/10_install/5">
+<h1>Translation:</h1>
+
+<ul>
+<li>Ugliest.</li>
+<li>Hack.</li>
+<li>Evar.</li>
+<li>(Sorry, Ian.)</li>
+<li>(Like a disturbing number of Ian's ugly hacks, it works quite well.)</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content smaller" ref="pip/10_install/6">
+<h1>Install like pip:</h1>
+
+<pre><code>python -c
+  "import setuptools;__file__=/p/to/setup.py;execfile(__file__)"
+  install
+  --single-version-externally-managed
+  --record /tmp/pip-ZgGVWG-record/install-record.txt
+</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content smbullets incremental" ref="pip/10_install/7">
+<h3><code>"import setuptools;__file__=/p/to/setup.py;execfile(__file__)"</code></h3>
+
+<ul>
+<li>Setuptools works by monkeypatching the builtin distutils.</li>
+<li>Thus, importing setuptools is enough to activate its features.</li>
+<li>This hack allows pip to do setuptools-only things (generate .egg-info
+metadata, develop/editable installs) on all projects, even those that stick
+to pure distutils in their setup.py.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content smbullets incremental" ref="pip/10_install/8">
+<h2><code>install</code></h2>
+
+<ul>
+<li>Just like a normal <code>python setup.py install</code>.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content smbullets incremental" ref="pip/10_install/9">
+<h2><code>--single-version-externally-managed</code></h2>
+
+<ul>
+<li><p>Tells setuptools to do a "flat" (distutils-style) install and put the
+metadata next to it in a <code>.egg-info</code> directory, rather than a zipped egg or
+egg-directory.</p></li>
+<li><p>A setuptools feature.</p></li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content commandline" ref="pip/10_install/10">
+<h2>Setuptools normally installs like this:</h2>
+
+<pre><code><code class="command">$ easy_install yolk</code>
+<code class="result">
+</code><code class="command"># cd to site-packages</code>
+<code class="command">$ ls | egrep "(yolk|easy)"</code>
+<code class="result">easy-install.pth
+yolk-0.4.1-py2.6.egg
+
+</code><code class="command">$ cat easy-install.pth</code>
+<code class="result">./setuptools-0.6c11-py2.6.egg
+./pip-0.8.1-py2.6.egg
+./yolk-0.4.1-py2.6.egg
+import sys; new=sys.path[sys.__plen:]; del sys.path[sys.__plen:]; p=getattr(sys,'__egginsert',0); sys.path[p:p]=new; sys.__egginsert = p+len(new)
+</code></code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content commandline" ref="pip/10_install/11">
+<h2>With <code>--single-version-externally-managed</code>:</h2>
+
+<pre><code><code class="command">$ pip install yolk</code>
+<code class="result">
+</code><code class="command">$ ls | grep yolk</code>
+<code class="result">yolk/
+yolk-0.4.1-py2.6.egg-info/
+</code></code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content smbullets incremental" ref="pip/10_install/12">
+<h3><code>--record /tmp/pip-ZgGVWG-record/install-record.txt</code></h3>
+
+<ul>
+<li>Generates a record of all files installed.</li>
+<li>distutils and setuptools: Y U NO DO THIS BY DEFAULT?!?!??!</li>
+<li>(Fortunately PEP 376 mandates it, and distutils2 does it.)</li>
+<li>Pip generates it in a temporary location, then moves it to
+<code>installed-files.txt</code> in the <code>.egg-info</code> metadata directory.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content" ref="pip/20_api/1">
+<h1>Using <code>pip</code> as an API</h1></div>
+</div><div class="slide" data-transition="none"><div class="content small" ref="pip/20_api/2">
+<h1><code>pip/commands/install.py</code></h1>
+
+<pre class="sh_python"><code>class InstallCommand(Command):
+    name = 'install'
+    usage = '%prog [OPTIONS] PACKAGE_NAMES...'
+    summary = 'Install packages'
+    bundle = False
+
+    def __init__(self):
+        super(InstallCommand, self).__init__()
+        self.parser.add_option(
+            '-e', '--editable',
+            dest='editables',
+            action='append',
+            default=[],
+            metavar='VCS+REPOS_URL[@REV]#egg=PACKAGE',
+    # ...
+
+    def run(self, options, args):
+        # ...</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content small" ref="pip/20_api/3">
+<pre class="sh_python"><code>from pip.req import InstallRequirement, RequirementSet
+from pip.index import PackageFinder
+from pip.locations import build_prefix, src_prefix
+reqset = RequirementSet(build_dir=build_prefix,
+                        src_dir=src_prefix,
+                        download_dir=None)
+req = InstallRequirement.from_line("yolk==0.4.1",
+                                   comes_from=None)
+reqset.add_requirement(req)
+finder = PackageFinder(
+    find_links=[],
+    index_urls=["http://pypi.python.org/simple"])
+reqset.prepare_files(finder)
+reqset.install(install_options=[], global_options=[])
+reqset.cleanup_files()</code></pre></div>
+</div><div class="slide" data-transition="none"><div class="content bullets incremental" ref="pip/30_summary">
+<h1>Lots more to pip</h1>
+
+<ul>
+<li>PackageFinder: easy_install-compatible HTML link scraping to find source
+distributions/versions.</li>
+<li>VCS backends.</li>
+<li>Requirements files.</li>
+<li>Bundles.</li>
+<li>Freeze, search, uninstall.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content" ref="outro/01_out/1">
+<h1>So.</h1></div>
+</div><div class="slide" data-transition="none"><div class="content smbullets incremental" ref="outro/01_out/2">
+<h3>What have we learned about Ian Bicking's brain?</h3>
+
+<ul>
+<li>...</li>
+<li>Left as an exercise!</li>
+<li>Thanks Ian!</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content" ref="outro/01_out/3">
+<h1>Future</h1></div>
+</div><div class="slide" data-transition="none"><div class="content bullets incremental" ref="outro/01_out/4">
+<h1>virtualenv</h1>
+
+<ul>
+<li>Integrate it into Python 3?</li>
+<li>Can be done more cleanly if integrated.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content bullets incremental" ref="outro/01_out/5">
+<h1>pip</h1>
+
+<ul>
+<li>Convert to wrapper around distutils2.</li>
+<li>Provide end-user conveniences (e.g. requirements files).</li>
+<li>Can iterate this more rapidly outside stdlib.</li>
+</ul>
+</div>
+</div><div class="slide" data-transition="none"><div class="content smbullets" ref="outro/01_out/6">
+<h1>Questions?</h1>
+
+<h3>Resources:</h3>
+
+<ul>
+<li><code>#pip</code> on Freenode</li>
+<li>http://groups.google.com/group/python-virtualenv</li>
+<li>https://github.com/pypa/pip</li>
+<li>https://github.com/pypa/virtualenv</li>
+<li>@carljm</li>
+<li>carl@oddbird.net</li>
+<li>slides: https://github.com/carljm/pipvirtualenv-preso</li>
+</ul>
+</div>
+</div></div>
+
+</body>
+</html>
